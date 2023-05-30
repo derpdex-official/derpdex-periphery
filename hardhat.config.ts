@@ -73,7 +73,13 @@ export default {
   zksolc: {
     version: "1.3.5",
     compilerSource: "binary",
-    settings: {},
+    settings: {
+      libraries: {
+        "contracts/libraries/NFTDescriptor.sol": {
+          NFTDescriptor: "0x6aB56A084FFDa4238F6B6A9DfE7F0A213d20D692"
+        }
+      }
+    },
   },
   defaultNetwork: "zkSyncTestnet",
   networks: {

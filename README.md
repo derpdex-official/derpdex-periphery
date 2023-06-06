@@ -4,11 +4,11 @@
 
 | Contract | Testnet | Mainnet |
 | --- | --- | --- |
-| `SwapRouter` | [`0x7f045F3F87FE671bfFa85ea0eD3A40Fdd971A30e`](https://goerli.explorer.zksync.io/address/0x7f045F3F87FE671bfFa85ea0eD3A40Fdd971A30e) | - |
-|`PositionManager` | [`0xb5e4F109C6c2721808bf692629d4Af9bc3Eb219f`](https://goerli.explorer.zksync.io/address/0xb5e4F109C6c2721808bf692629d4Af9bc3Eb219f) | - |
-| `WETH9` | [`0x5672B500550E9916C9967E18F67915407D70C62e`](https://goerli.explorer.zksync.io/address/0x5672B500550E9916C9967E18F67915407D70C62e) | - | 
-| `NFTDescriptor` | [`0x81964F0cd55aCB2861D05DBcFF37386927Cd61b4`](https://goerli.explorer.zksync.io/address/0x81964F0cd55aCB2861D05DBcFF37386927Cd61b4) | - |
-|`TickLens` | [`0x23b9e082113C1Fa4B9eF09bc8E22c768aA47fBd1`](https://goerli.explorer.zksync.io/address/0x23b9e082113C1Fa4B9eF09bc8E22c768aA47fBd1) | - |
-| `QuoterV2` | [`0x7a45cDEc4fdd15d6d0B3d3a22DB1Ef36964c7E83`](https://goerli.explorer.zksync.io/address/0x7a45cDEc4fdd15d6d0B3d3a22DB1Ef36964c7E83) | - |
-|  `V3Migrator` | [`0x5ED66aE57037275b062D02BDA5d1f07204b1686c`](https://goerli.explorer.zksync.io/address/0x5ED66aE57037275b062D02BDA5d1f07204b1686c) | - |
+| `SwapRouter` | [`0xAd67D5277659F25F195De7c222130634939A22F6`](https://goerli.explorer.zksync.io/address/0xAd67D5277659F25F195De7c222130634939A22F6) | - |
+|`PositionManager` | [`0xAEabe270C197Ae39B5d2A192A5c2c36D9b55bAEd`](https://goerli.explorer.zksync.io/address/0xAEabe270C197Ae39B5d2A192A5c2c36D9b55bAEd) | - |
+| `WETH9` | [`0xC3ec043C150c945652A09D7E47F856AC9fB0F893`](https://goerli.explorer.zksync.io/address/0xC3ec043C150c945652A09D7E47F856AC9fB0F893) | - | 
+| `NFTDescriptor` | [`0xaf184caB3826Fa57a1D6C44094b5A2b36B827305`](https://goerli.explorer.zksync.io/address/0xaf184caB3826Fa57a1D6C44094b5A2b36B827305) | - |
+|`TickLens` | [`0x6B0C50acbF814e599CA9c48D486b3532d50A2B4F`](https://goerli.explorer.zksync.io/address/0x6B0C50acbF814e599CA9c48D486b3532d50A2B4F) | - |
+| `QuoterV2` | [`0x6D89fdcB2a7713D097979df01e068760053AC738`](https://goerli.explorer.zksync.io/address/0x6D89fdcB2a7713D097979df01e068760053AC738) | - |
+|  `V3Migrator` | [`0xb091924e669E002b3748E2E92496B4A842Ad4eed`](https://goerli.explorer.zksync.io/address/0xb091924e669E002b3748E2E92496B4A842Ad4eed) | - |
 |  `nftDescriptorLibrary` | [`0x6aB56A084FFDa4238F6B6A9DfE7F0A213d20D692`](https://goerli.explorer.zksync.io/address/0x6aB56A084FFDa4238F6B6A9DfE7F0A213d20D692) | - |

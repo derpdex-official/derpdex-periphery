@@ -8,6 +8,7 @@ import "@matterlabs/hardhat-zksync-deploy";
 import "@matterlabs/hardhat-zksync-solc";
 import 'hardhat-deploy'
 import "@matterlabs/hardhat-zksync-verify";
+import "@matterlabs/hardhat-zksync-toolbox";
 dotenv.config()
 
 const zkSyncTestnet =
@@ -17,6 +18,7 @@ const zkSyncTestnet =
       ethNetwork: "http://localhost:8545",
       // ethNetwork: "http://localhost:8646",
       zksync: true,
+      timeout: 100000
     }
     : {
       url: "https://testnet.era.zksync.dev",
@@ -86,7 +88,7 @@ export default {
     zkSyncTestnet,
     hardhat: {
       allowUnlimitedContractSize: false,
-      zksync: false,
+      zksync: true,
     },
     mainnet: {
       url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
@@ -138,4 +140,7 @@ export default {
       verbose: true,
     },
   },
+  mocha: {
+    timeout: 100000
+  }
 }

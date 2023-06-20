@@ -1,0 +1,7 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+// exports[`Multicall gas cost of pay w/ multicall 1`] = `109837`;
+exports[`Multicall gas cost of pay w/ multicall 1`] = `144133`;
+
+// exports[`Multicall gas cost of pay w/o multicall 1`] = `104485`;
+exports[`Multicall gas cost of pay w/o multicall 1`] = `138800`;

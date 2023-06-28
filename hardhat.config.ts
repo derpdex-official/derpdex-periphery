@@ -18,7 +18,7 @@ const zkSyncTestnet =
       ethNetwork: "http://localhost:8545",
       // ethNetwork: "http://localhost:8646",
       zksync: true,
-      timeout: 100000
+      timeout: 1_000_000
     }
     : {
       url: "https://testnet.era.zksync.dev",

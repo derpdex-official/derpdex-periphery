@@ -42,6 +42,7 @@ export default async function (hre: HardhatRuntimeEnvironment) {
     console.log("Deploying SwapRouter...");
     let routerContract = await deployer.deploy(SwapRouterArtifact, [factoryAddress, WETH9Address]);
 
+    await routerContract.deployTransaction.wait(15);
     // @ts-ignore
     const contractAddress = routerContract.address;
     console.log(`${SwapRouterArtifact.contractName} was deployed to ${contractAddress}`);
@@ -51,6 +52,8 @@ export default async function (hre: HardhatRuntimeEnvironment) {
     const NonfungibleTokenPositionDescriptorContract = await deployer.deploy(NonfungibleTokenPositionDescriptorArtifact,
         [factoryAddress, ethers.utils.formatBytes32String(nativeCurrencyLabel)]
     );
+
+    await NonfungibleTokenPositionDescriptorContract.deployTransaction.wait(15);
     const NonfungibleTokenPositionDescriptorAddress = NonfungibleTokenPositionDescriptorContract.address;
     console.log(`${NonfungibleTokenPositionDescriptorArtifact.contractName} was deployed to ${NonfungibleTokenPositionDescriptorAddress}`);
 
@@ -60,7 +63,7 @@ export default async function (hre: HardhatRuntimeEnvironment) {
         [factoryAddress, WETH9Address, NonfungibleTokenPositionDescriptorAddress]
     );
 
-    await NonfungiblePositionManagerContract.deployTransaction.wait(15)
+    await NonfungiblePositionManagerContract.deployTransaction.wait(15);
     const NonfungiblePositionManagerAddress = NonfungiblePositionManagerContract.address;
     console.log(`${NonfungiblePositionManager.contractName} was deployed to ${NonfungiblePositionManagerAddress}`);
 

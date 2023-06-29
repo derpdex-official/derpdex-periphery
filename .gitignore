@@ -7,3 +7,5 @@ typechain/
 cache-zk/
 artifacts-zk/
 .env
+.DS_Store
+__snapshots__

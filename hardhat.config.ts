@@ -8,26 +8,38 @@ import "@matterlabs/hardhat-zksync-deploy";
 import "@matterlabs/hardhat-zksync-solc";
 import 'hardhat-deploy'
 import "@matterlabs/hardhat-zksync-verify";
-import "@matterlabs/hardhat-zksync-toolbox";
+import addresses from './addresses'
 dotenv.config()
 
-const zkSyncTestnet =
-  process.env.NODE_ENV == "test"
-    ? {
+const zkSyncNetwork = (() => {
+  if (process.env.NODE_ENV == "local") {
+    return {
       url: "http://localhost:3050",
       ethNetwork: "http://localhost:8545",
       // ethNetwork: "http://localhost:8646",
       zksync: true,
-      timeout: 1_000_000
     }
-    : {
+  } else if (process.env.NODE_ENV == "testnet") {
+    return {
       url: "https://testnet.era.zksync.dev",
       // ethNetwork: "goerli",
-      ethNetwork: process.env.mainnet_rpc, // "goerli", // Can also be the RPC URL of the Ethereum network (e.g. `https://goerli.infura.io/v3/<API_KEY>`)
+      ethNetwork: process.env.goerli_rpc,
       zksync: true,
-      verifyURL: 'https://zksync2-testnet-explorer.zksync.dev/contract_verification',
-    };
-console.log("zkSyncTestnet", zkSyncTestnet)
+      verifyURL: 'https://zksync2-testnet-explorer.zksync.dev/contract_verification'
+    }
+  } else if(process.env.NODE_ENV == "mainnet") {
+    return {
+      url: process.env.ZKSYNC_MAINNET_RPC,
+      ethNetwork: process.env.mainnet_rpc,
+      zksync: true,
+      verifyURL: process.env.ZKSYNC_MAINNET_VERIFY_URL
+    }
+  } else {
+    throw new Error("Please use one of the following NODE_ENV (local, testnet, mainnet)")
+  }
+}) ()
+
+console.log("zkSyncNetwork", zkSyncNetwork)
 
 const LOW_OPTIMIZER_COMPILER_SETTINGS = {
   version: '0.7.6',
@@ -77,18 +89,18 @@ export default {
     compilerSource: "binary",
     settings: {
       libraries: {
-        "contracts/libraries/NFTDescriptor.sol": {
-          NFTDescriptor: "0x6aB56A084FFDa4238F6B6A9DfE7F0A213d20D692"
+        "contracts/libraries/NFTDescriptor.sol": { //@ts-ignore
+          NFTDescriptor: addresses[process.env.NODE_ENV].NFTDescriptor
         }
       }
     },
   },
-  defaultNetwork: "zkSyncTestnet",
+  defaultNetwork: "zkSyncNetwork",
   networks: {
-    zkSyncTestnet,
+    zkSyncNetwork,
     hardhat: {
       allowUnlimitedContractSize: false,
-      zksync: true,
+      zksync: false,
     },
     mainnet: {
       url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
@@ -140,7 +152,4 @@ export default {
       verbose: true,
     },
   },
-  mocha: {
-    timeout: 100000
-  }
 }

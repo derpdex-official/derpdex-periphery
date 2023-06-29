@@ -2,12 +2,13 @@ import { utils, Wallet, Provider } from "zksync-web3";
 import * as ethers from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { Deployer } from "@matterlabs/hardhat-zksync-deploy";
+import addresses from "../addresses";
 
 export default async function (hre: HardhatRuntimeEnvironment) {
-    const factoryAddress = "0x72B37018BfD6F78c7c7509Bf77f8D1d4bd206dBD"
-    // const factoryAddress = "0x329e3D402920785aA7208d58622103d286cB4fd2" //hardhat
+    //@ts-ignore
+    const allAddresses = addresses[process.env.NODE_ENV || "local"]
+    const factoryAddress = allAddresses.factoryAddress
     const nativeCurrencyLabel = "ETH"
-    // let pk = process.env.pk
     
     let pk_testnet = process.env.pk || ""
 
@@ -27,20 +28,22 @@ export default async function (hre: HardhatRuntimeEnvironment) {
 
     // await depositHandle.wait();
 
-    const WETH9Artifact = await deployer.loadArtifact("WETH9");
-    console.log("Deploying WETH9...");
-    let WETH9Contract = await deployer.deploy(WETH9Artifact, []);
+    // const WETH9Artifact = await deployer.loadArtifact("WETH9");
+    // console.log("Deploying WETH9...");
+    // let WETH9Contract = await deployer.deploy(WETH9Artifact, []);
 
-    // const WETH9Address = "0x8945c87563489B1f58DfFa462077844012A43e4c" //WETH9Contract.address;
-    const WETH9Address = WETH9Contract.address;
-    console.log(`${WETH9Artifact.contractName} was deployed to ${WETH9Address}`);
+    const WETH9Address = allAddresses.WETH
+    // const WETH9Address = "0x801a9Fa5e21979c940c8714B87CF6388F2328b4c" //hardhat
+    // const WETH9Address = WETH9Contract.address;
+    // console.log(`${WETH9Artifact.contractName} was deployed to ${WETH9Address}`);
 
     const SwapRouterArtifact = await deployer.loadArtifact("SwapRouter");
 
     console.log("Deploying SwapRouter...");
     let routerContract = await deployer.deploy(SwapRouterArtifact, [factoryAddress, WETH9Address]);
 
-    //@ts-ignore
+    await routerContract.deployTransaction.wait(15);
+    // @ts-ignore
     const contractAddress = routerContract.address;
     console.log(`${SwapRouterArtifact.contractName} was deployed to ${contractAddress}`);
 
@@ -49,6 +52,8 @@ export default async function (hre: HardhatRuntimeEnvironment) {
     const NonfungibleTokenPositionDescriptorContract = await deployer.deploy(NonfungibleTokenPositionDescriptorArtifact,
         [factoryAddress, ethers.utils.formatBytes32String(nativeCurrencyLabel)]
     );
+
+    await NonfungibleTokenPositionDescriptorContract.deployTransaction.wait(15);
     const NonfungibleTokenPositionDescriptorAddress = NonfungibleTokenPositionDescriptorContract.address;
     console.log(`${NonfungibleTokenPositionDescriptorArtifact.contractName} was deployed to ${NonfungibleTokenPositionDescriptorAddress}`);
 
@@ -56,8 +61,30 @@ export default async function (hre: HardhatRuntimeEnvironment) {
     console.log("Deploying NonfungiblePositionManager...");
     const NonfungiblePositionManagerContract = await deployer.deploy(NonfungiblePositionManager,
         [factoryAddress, WETH9Address, NonfungibleTokenPositionDescriptorAddress]
-        // [factoryAddress, "0x8945c87563489B1f58DfFa462077844012A43e4c", "0xe6E743eaA1de83d44a6f8B744bb52B0d29dcd972"] //testnet
     );
+
+    await NonfungiblePositionManagerContract.deployTransaction.wait(15);
     const NonfungiblePositionManagerAddress = NonfungiblePositionManagerContract.address;
     console.log(`${NonfungiblePositionManager.contractName} was deployed to ${NonfungiblePositionManagerAddress}`);
+
+
+    //verify 
+    console.log("staring verification")
+    console.log("verifying SwapRouter")
+    await hre.run("verify:verify", {
+        address: routerContract.address,
+        constructorArguments: [factoryAddress, WETH9Address],
+    })
+
+    console.log("verifying NonfungibleTokenPositionDescriptor")
+    await hre.run("verify:verify", {
+        address: NonfungibleTokenPositionDescriptorContract.address,
+        constructorArguments: [factoryAddress, ethers.utils.formatBytes32String(nativeCurrencyLabel)],
+    })
+
+    console.log("verifying NonfungiblePositionManager")
+    await hre.run("verify:verify", {
+        address: NonfungiblePositionManagerContract.address,
+        constructorArguments: [factoryAddress, WETH9Address, NonfungibleTokenPositionDescriptorAddress],
+    })
 }

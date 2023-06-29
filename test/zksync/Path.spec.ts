@@ -8,7 +8,7 @@ import { decodePath, encodePath } from './shared/path'
 
 import snapshotGasCost from './shared/snapshotGasCost'
 
-import getContractInstance from './shared/getContractInstance'
+import { getContractFactory } from './shared/zkUtils'
 
 describe('Path', () => {
   let path: PathTest
@@ -22,8 +22,8 @@ describe('Path', () => {
 
   const pathTestFixture = async () => {
     // const pathTestFactory = await ethers.getContractFactory('PathTest')
-    // return (await pathTestFactory.deploy()) as PathTest
-    return (await getContractInstance("PathTest")) as PathTest
+    const pathTestFactory = await getContractFactory('PathTest')
+    return (await pathTestFactory.deploy()) as PathTest
   }
 
   // let loadFixture: ReturnType<typeof waffle.createFixtureLoader>

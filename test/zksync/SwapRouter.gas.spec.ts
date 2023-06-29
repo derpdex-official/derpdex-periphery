@@ -14,7 +14,8 @@ import snapshotGasCost from './shared/snapshotGasCost'
 import { getMaxTick, getMinTick } from './shared/ticks'
 
 import { Provider, Wallet } from "zksync-web3"
-import getContractInstance from './shared/getContractInstance'
+import { getContractFactory, getSigners } from './shared/zkUtils'
+type Fixture<T> = (wallets: Wallet[], provider: Provider) => Promise<T>
 
 describe('SwapRouter gas tests', function () {
   // this.timeout(40000)
@@ -22,13 +23,12 @@ describe('SwapRouter gas tests', function () {
   let wallet: Wallet
   let trader: Wallet
 
-  // const swapRouterFixture: Fixture<{
-  //   weth9: IWETH9
-  //   router: MockTimeSwapRouter
-  //   tokens: [TestERC20, TestERC20, TestERC20]
-  //   pools: [IUniswapV3Pool, IUniswapV3Pool, IUniswapV3Pool]
-  // }> = async (wallets, provider) => {
-  const swapRouterFixture = async (wallets: Wallet[], provider: Provider) => {
+  const swapRouterFixture: Fixture<{
+    weth9: IWETH9
+    router: MockTimeSwapRouter
+    tokens: [TestERC20, TestERC20, TestERC20]
+    pools: [IUniswapV3Pool, IUniswapV3Pool, IUniswapV3Pool]
+  }> = async (wallets, provider) => {
     const { weth9, factory, router, tokens, nft } = await completeFixture(wallets, provider)
 
     // approve & fund wallets
@@ -121,20 +121,15 @@ describe('SwapRouter gas tests', function () {
 
   before('create fixture loader', async () => {
     // const wallets = await (ethers as any).getSigners()
-    // ;[wallet, trader] = wallets
+    const wallets = await getSigners()
+    ;[wallet, trader] = wallets
 
     // loadFixture = waffle.createFixtureLoader(wallets)
-    const provider = Provider.getDefaultProvider()
-    wallet = new Wallet(PRIVATE_KEY, provider)
-    trader = Wallet.createRandom().connect(provider)
-    const tx = await wallet.transfer({ to: trader.address, amount: utils.parseEther("1") })
-    await tx.wait()
   })
 
   beforeEach('load fixture', async () => {
     // ;({ router, weth9, tokens, pools } = await loadFixture(swapRouterFixture))
-    const provider = Provider.getDefaultProvider()
-    ;({ router, weth9, tokens, pools } = await swapRouterFixture([wallet], provider))
+    ;({ router, weth9, tokens, pools } = await swapRouterFixture([wallet], Provider.getDefaultProvider()))
   })
 
   async function exactInput(
@@ -301,8 +296,8 @@ describe('SwapRouter gas tests', function () {
 
     it('0 -> 1 minimal', async () => {
       // const calleeFactory = await ethers.getContractFactory('TestUniswapV3Callee')
-      // const callee = await calleeFactory.deploy()
-      const callee = await getContractInstance("TestUniswapV3Callee")
+      const calleeFactory = await getContractFactory('TestUniswapV3Callee')
+      const callee = await calleeFactory.deploy()
 
       const tx = await tokens[0].connect(trader).approve(callee.address, constants.MaxUint256)
       await tx.wait()

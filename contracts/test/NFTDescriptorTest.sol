@@ -17,15 +17,17 @@ contract NFTDescriptorTest {
         return NFTDescriptor.constructTokenURI(params);
     }
 
-    function getGasCostOfConstructTokenURI(NFTDescriptor.ConstructTokenURIParams calldata params)
-        public
-        view
-        returns (uint256)
-    {
-        uint256 gasBefore = gasleft();
-        NFTDescriptor.constructTokenURI(params);
-        return gasBefore - gasleft();
-    }
+    // no issue here, comment out to solve over contract size issue
+    // can comment back when need to run test with this function
+    // function getGasCostOfConstructTokenURI(NFTDescriptor.ConstructTokenURIParams calldata params)
+    //     public
+    //     view
+    //     returns (uint256)
+    // {
+    //     uint256 gasBefore = gasleft();
+    //     NFTDescriptor.constructTokenURI(params);
+    //     return gasBefore - gasleft();
+    // }
 
     function tickToDecimalString(
         int24 tick,

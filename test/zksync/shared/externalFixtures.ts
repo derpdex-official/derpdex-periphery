@@ -2,7 +2,6 @@
 //   abi as FACTORY_ABI,
 //   bytecode as FACTORY_BYTECODE,
 // } from '@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json'
-// import { abi as FACTORY_V2_ABI, bytecode as FACTORY_V2_BYTECODE } from '@uniswap/v2-core/build/UniswapV2Factory.json'
 // import { Fixture } from 'ethereum-waffle'
 // import { ethers, waffle } from 'hardhat'
 import { IUniswapV3Factory, IWETH9, MockTimeSwapRouter } from '../../../typechain'
@@ -11,22 +10,18 @@ import { IUniswapV3Factory, IWETH9, MockTimeSwapRouter } from '../../../typechai
 // import { Contract } from '@ethersproject/contracts'
 // import { constants } from 'ethers'
 
-import { Wallet, Provider, ContractFactory } from 'zksync-web3';
-import { Deployer } from "@matterlabs/hardhat-zksync-deploy";
-import * as hre from 'hardhat';
-import { UNISWAP_V3_FACTORY_ABI, UNISWAP_V3_FACTORY_BYTECODE, PRIVATE_KEY } from './constants'
-import getContractInstance from './getContractInstance'
+import { getContractInstance, getContractFactory } from './zkUtils'
+import { ContractFactory, Provider, Wallet } from 'zksync-web3'
+type Fixture<T> = (wallets: Wallet[], provider: Provider) => Promise<T>
+const uniswapV3FactoryArtifact = require("../../contracts/UniswapV3Factory.sol/UniswapV3Factory.json")
+const uniswapV3PoolArtifact = require("../../contracts/UniswapV3Pool.sol/UniswapV3Pool.json")
 
-// const wethFixture: Fixture<{ weth9: IWETH9 }> = async ([wallet]) => {
-//   const weth9 = (await waffle.deployContract(wallet, {
-//     bytecode: WETH9.bytecode,
-//     abi: WETH9.abi,
-//   })) as IWETH9
-
-//   return { weth9 }
-// }
-const wethFixture = async ([wallet]: Wallet[], provider: Provider) => {
-  const weth9 = await getContractInstance("WETH9") as IWETH9
+const wethFixture: Fixture<{ weth9: IWETH9 }> = async ([wallet]) => {
+  // const weth9 = (await waffle.deployContract(wallet, {
+  //   bytecode: WETH9.bytecode,
+  //   abi: WETH9.abi,
+  // })) as IWETH9
+  const weth9 = await getContractInstance("WETH9") as unknown as IWETH9
 
   return { weth9 }
 }
@@ -45,50 +40,31 @@ const wethFixture = async ([wallet]: Wallet[], provider: Provider) => {
 //   return { factory }
 // }
 
-// const v3CoreFactoryFixture: Fixture<IUniswapV3Factory> = async ([wallet]) => {
-//   return (await waffle.deployContract(wallet, {
-//     bytecode: FACTORY_BYTECODE,
-//     abi: FACTORY_ABI,
-//   })) as IUniswapV3Factory
-// }
-export const v3CoreFactoryFixture = async ([wallet]: Wallet[], provider: Provider) => {
-  // const abi = [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint24","name":"fee","type":"uint24"},{"indexed":true,"internalType":"int24","name":"tickSpacing","type":"int24"}],"name":"FeeAmountEnabled","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"oldOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnerChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token0","type":"address"},{"indexed":true,"internalType":"address","name":"token1","type":"address"},{"indexed":true,"internalType":"uint24","name":"fee","type":"uint24"},{"indexed":false,"internalType":"int24","name":"tickSpacing","type":"int24"},{"indexed":false,"internalType":"address","name":"pool","type":"address"}],"name":"PoolCreated","type":"event"},{"inputs":[{"internalType":"address","name":"tokenA","type":"address"},{"internalType":"address","name":"tokenB","type":"address"},{"internalType":"uint24","name":"fee","type":"uint24"}],"name":"createPool","outputs":[{"internalType":"address","name":"pool","type":"address"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint24","name":"fee","type":"uint24"},{"internalType":"int24","name":"tickSpacing","type":"int24"}],"name":"enableFeeAmount","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint24","name":"","type":"uint24"}],"name":"feeAmountTickSpacing","outputs":[{"internalType":"int24","name":"","type":"int24"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"address","name":"","type":"address"},{"internalType":"uint24","name":"","type":"uint24"}],"name":"getPool","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"parameters","outputs":[{"internalType":"address","name":"factory","type":"address"},{"internalType":"address","name":"token0","type":"address"},{"internalType":"address","name":"token1","type":"address"},{"internalType":"uint24","name":"fee","type":"uint24"},{"internalType":"int24","name":"tickSpacing","type":"int24"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_owner","type":"address"}],"name":"setOwner","outputs":[],"stateMutability":"nonpayable","type":"function"}]
-  return await (new ContractFactory(UNISWAP_V3_FACTORY_ABI, UNISWAP_V3_FACTORY_BYTECODE, wallet)).deploy()
+const v3CoreFactoryFixture: Fixture<IUniswapV3Factory> = async ([wallet]) => {
+  //   return (await waffle.deployContract(wallet, {
+    //     bytecode: FACTORY_BYTECODE,
+    //     abi: FACTORY_ABI,
+    //   })) as IUniswapV3Factory
+  const contractFactory = new ContractFactory(uniswapV3FactoryArtifact.abi, uniswapV3FactoryArtifact.bytecode, wallet)
+  const factoryDeps = [uniswapV3PoolArtifact.bytecode]
+  const uniswapV3Factory = await contractFactory.deploy({customData: {factoryDeps}})
+  await uniswapV3Factory.deployed()
+  return uniswapV3Factory as IUniswapV3Factory
 }
 
-// export const v3RouterFixture: Fixture<{
-//   weth9: IWETH9
-//   factory: IUniswapV3Factory
-//   router: MockTimeSwapRouter
-// }> = async ([wallet], provider) => {
-//   const { weth9 } = await wethFixture([wallet], provider)
-//   const factory = await v3CoreFactoryFixture([wallet], provider)
-
-//   const router = (await (await ethers.getContractFactory('MockTimeSwapRouter')).deploy(
-//     factory.address,
-//     weth9.address
-//   )) as MockTimeSwapRouter
-
-//   return { factory, weth9, router }
-// }
-
-// export const v3RouterFixture = async ([wallet]: Wallet[]) => {
-//   const { weth9 } = await wethFixture([wallet])
-//   const factory = await v3CoreFactoryFixture([wallet])
-
-//   const deployer = new Deployer(hre, wallet)
-//   const artifact = await deployer.loadArtifact("MockTimeSwapRouter")
-//   const router = await deployer.deploy(artifact, [factory.address, weth9.address])
-
-//   return { factory, weth9, router }
-// }
-export const v3RouterFixture = async ([wallet]: Wallet[], provider: Provider) => {
+export const v3RouterFixture: Fixture<{
+  weth9: IWETH9
+  factory: IUniswapV3Factory
+  router: MockTimeSwapRouter
+}> = async ([wallet], provider) => {
   const { weth9 } = await wethFixture([wallet], provider)
   const factory = await v3CoreFactoryFixture([wallet], provider) as IUniswapV3Factory
 
-  const deployer = new Deployer(hre, wallet)
-  const artifact = await deployer.loadArtifact("MockTimeSwapRouter")
-  const router = await deployer.deploy(artifact, [factory.address, weth9.address]) as MockTimeSwapRouter
+  // const router = (await (await ethers.getContractFactory('MockTimeSwapRouter')).deploy(
+  const router = (await (await getContractFactory('MockTimeSwapRouter')).deploy(
+    factory.address,
+    weth9.address
+  )) as MockTimeSwapRouter
 
   return { factory, weth9, router }
 }

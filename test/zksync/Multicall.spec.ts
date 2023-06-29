@@ -4,9 +4,8 @@ import { TestMulticall } from '../../typechain/TestMulticall'
 import { expect } from './shared/expect'
 import snapshotGasCost from './shared/snapshotGasCost'
 
-import getContractInstance from './shared/getContractInstance'
-import { Provider, Wallet } from "zksync-web3"
-import { PRIVATE_KEY } from "./shared/constants"
+import { getContractFactory, getSigners } from './shared/zkUtils'
+import { Wallet } from "zksync-web3"
 
 describe('Multicall', async () => {
   let wallets: Wallet[]
@@ -15,13 +14,13 @@ describe('Multicall', async () => {
 
   before('get wallets', async () => {
     // wallets = await (ethers as any).getSigners()
-    wallets = [new Wallet(PRIVATE_KEY, Provider.getDefaultProvider())]
+    wallets = await getSigners()
   })
 
   beforeEach('create multicall', async () => {
     // const multicallTestFactory = await ethers.getContractFactory('TestMulticall')
-    // multicall = (await multicallTestFactory.deploy()) as TestMulticall
-    multicall = await getContractInstance("TestMulticall") as TestMulticall
+    const multicallTestFactory = await getContractFactory('TestMulticall')
+    multicall = (await multicallTestFactory.deploy()) as TestMulticall
   })
 
   it('revert messages are returned', async () => {

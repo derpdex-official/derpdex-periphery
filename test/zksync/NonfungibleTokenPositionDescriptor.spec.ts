@@ -6,15 +6,14 @@ import { expect } from './shared/expect'
 import { NonfungibleTokenPositionDescriptor, MockTimeNonfungiblePositionManager, TestERC20 } from '../../typechain'
 import completeFixture from './shared/completeFixture'
 import { encodePriceSqrt } from './shared/encodePriceSqrt'
-import { FeeAmount, PRIVATE_KEY, TICK_SPACINGS } from './shared/constants'
+import { FeeAmount, TICK_SPACINGS } from './shared/constants'
 import { getMaxTick, getMinTick } from './shared/ticks'
 import { sortedTokens } from './shared/tokenSort'
 import { extractJSONFromURI } from './shared/extractJSONFromURI'
 
-import { ContractFactory, Provider, Wallet } from 'zksync-web3'
-import getContractInstance from './shared/getContractInstance'
-import { Deployer } from '@matterlabs/hardhat-zksync-deploy'
-import * as hre from "hardhat"
+import { Provider, Wallet } from 'zksync-web3'
+import { getContractFactory, getSigners } from './shared/zkUtils'
+type Fixture<T> = (wallets: Wallet[], provider: Provider) => Promise<T>
 
 const DAI = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
 const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
@@ -25,21 +24,18 @@ const WBTC = '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599'
 describe('NonfungibleTokenPositionDescriptor', () => {
   let wallets: Wallet[]
 
-  // const nftPositionDescriptorCompleteFixture: Fixture<{
-  //   nftPositionDescriptor: NonfungibleTokenPositionDescriptor
-  //   tokens: [TestERC20, TestERC20, TestERC20]
-  //   nft: MockTimeNonfungiblePositionManager
-  // }> = async (wallets, provider) => {
-  const nftPositionDescriptorCompleteFixture = async (wallets: Wallet[], provider: Provider) => {
+  const nftPositionDescriptorCompleteFixture: Fixture<{
+    nftPositionDescriptor: NonfungibleTokenPositionDescriptor
+    tokens: [TestERC20, TestERC20, TestERC20]
+    nft: MockTimeNonfungiblePositionManager
+  }> = async (wallets, provider) => {
     const { factory, nft, router, nftDescriptor } = await completeFixture(wallets, provider)
     // const tokenFactory = await ethers.getContractFactory('TestERC20')
+    const tokenFactory = await getContractFactory('TestERC20')
     const tokens: [TestERC20, TestERC20, TestERC20] = [
-      // (await tokenFactory.deploy(constants.MaxUint256.div(2))) as TestERC20, // do not use maxu256 to avoid overflowing
-      // (await tokenFactory.deploy(constants.MaxUint256.div(2))) as TestERC20,
-      // (await tokenFactory.deploy(constants.MaxUint256.div(2))) as TestERC20,
-      (await getContractInstance("TestERC20", [constants.MaxUint256.div(2)])) as TestERC20,
-      (await getContractInstance("TestERC20", [constants.MaxUint256.div(2)])) as TestERC20,
-      (await getContractInstance("TestERC20", [constants.MaxUint256.div(2)])) as TestERC20
+      (await tokenFactory.deploy(constants.MaxUint256.div(2))) as TestERC20, // do not use maxu256 to avoid overflowing
+      (await tokenFactory.deploy(constants.MaxUint256.div(2))) as TestERC20,
+      (await tokenFactory.deploy(constants.MaxUint256.div(2))) as TestERC20,
     ]
     tokens.sort((a, b) => (a.address.toLowerCase() < b.address.toLowerCase() ? -1 : 1))
 
@@ -57,25 +53,18 @@ describe('NonfungibleTokenPositionDescriptor', () => {
 
   // let loadFixture: ReturnType<typeof waffle.createFixtureLoader>
 
-  // before('create fixture loader', async () => {
-  //   wallets = await (ethers as any).getSigners()
+  before('create fixture loader', async () => {
+    // wallets = await (ethers as any).getSigners()
+    wallets = await getSigners()
 
-  //   loadFixture = waffle.createFixtureLoader(wallets)
-  // })
+    // loadFixture = waffle.createFixtureLoader(wallets)
+  })
 
   beforeEach('load fixture', async () => {
     // ;({ tokens, nft, nftPositionDescriptor } = await loadFixture(nftPositionDescriptorCompleteFixture))
-    const provider = Provider.getDefaultProvider()
-    const wallet = new Wallet(PRIVATE_KEY, provider)
-    wallets = [wallet]
-    
-    ;({ tokens, nft, nftPositionDescriptor } = await nftPositionDescriptorCompleteFixture(wallets, provider))
+    ;({ tokens, nft, nftPositionDescriptor } = await nftPositionDescriptorCompleteFixture(wallets, Provider.getDefaultProvider()))
     // const tokenFactory = await ethers.getContractFactory('TestERC20')
-    // weth9 = tokenFactory.attach(await nftPositionDescriptor.WETH9()) as TestERC20
-
-    const deployer = new Deployer(hre, wallet)
-    const artifact = await deployer.loadArtifact("TestERC20")
-    const tokenFactory = new ContractFactory(artifact.abi, artifact.bytecode, wallet)
+    const tokenFactory = await getContractFactory('TestERC20')
     weth9 = tokenFactory.attach(await nftPositionDescriptor.WETH9()) as TestERC20
   })
 
@@ -237,16 +226,12 @@ describe('NonfungibleTokenPositionDescriptor', () => {
       //     NFTDescriptor: nftDescriptorLibrary.address,
       //   },
       // })
-      // const nftDescriptor = (await positionDescriptorFactory.deploy(
-      //   weth9.address,
-      //   // 'FUNNYMONEY' as a bytes32 string
-      //   '0x46554e4e594d4f4e455900000000000000000000000000000000000000000000'
-      // )) as NonfungibleTokenPositionDescriptor
-      const nftDescriptor = await getContractInstance("NonfungibleTokenPositionDescriptor", [
+      const positionDescriptorFactory = await getContractFactory('NonfungibleTokenPositionDescriptor')
+      const nftDescriptor = (await positionDescriptorFactory.deploy(
         weth9.address,
         // 'FUNNYMONEY' as a bytes32 string
         '0x46554e4e594d4f4e455900000000000000000000000000000000000000000000'
-      ]) as NonfungibleTokenPositionDescriptor
+      )) as NonfungibleTokenPositionDescriptor
 
       const metadata = extractJSONFromURI(await nftDescriptor.tokenURI(nft.address, 1))
       expect(metadata.name).to.match(/(\sFUNNYMONEY\/TEST|TEST\/FUNNYMONEY)/)

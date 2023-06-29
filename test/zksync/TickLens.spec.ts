@@ -1,4 +1,4 @@
-import { Fixture } from 'ethereum-waffle'
+// import { Fixture } from 'ethereum-waffle'
 // import { BigNumber, BigNumberish, constants, Contract, ContractTransaction, Wallet } from 'ethers'
 import { BigNumber, BigNumberish, constants } from 'ethers'
 // import { ethers, waffle } from 'hardhat'
@@ -12,17 +12,17 @@ import { computePoolAddress } from './shared/computePoolAddress'
 import snapshotGasCost from './shared/snapshotGasCost'
 
 import { Provider, Wallet } from 'zksync-web3'
-import getContractInstance from './shared/getContractInstance'
+import { getContractFactory, getSigners } from './shared/zkUtils'
+type Fixture<T> = (wallets: Wallet[], provider: Provider) => Promise<T>
 
 describe('TickLens', () => {
   let wallets: Wallet[]
 
-  // const nftFixture: Fixture<{
-  //   factory: Contract
-  //   nft: MockTimeNonfungiblePositionManager
-  //   tokens: [TestERC20, TestERC20, TestERC20]
-  // }> = async (wallets, provider) => {
-  const nftFixture = async (wallets: Wallet[], provider: Provider) => {
+  const nftFixture: Fixture<{
+    factory: IUniswapV3Factory
+    nft: MockTimeNonfungiblePositionManager
+    tokens: [TestERC20, TestERC20, TestERC20]
+  }> = async (wallets, provider) => {
     const { factory, tokens, nft } = await completeFixture(wallets, provider)
 
     for (const token of tokens) {
@@ -47,15 +47,13 @@ describe('TickLens', () => {
 
   before('create fixture loader', async () => {
     // wallets = await (ethers as any).getSigners()
+    wallets = await getSigners()
     // loadFixture = waffle.createFixtureLoader(wallets)
-    const provider = Provider.getDefaultProvider()
-    wallets = [new Wallet(PRIVATE_KEY, provider)]
   })
 
   beforeEach('load fixture', async () => {
     // ;({ factory, tokens, nft } = await loadFixture(nftFixture))
-    const provider = Provider.getDefaultProvider()
-    ;({ factory, tokens, nft } = await nftFixture(wallets, provider))
+    ;({ factory, tokens, nft } = await nftFixture(wallets, Provider.getDefaultProvider()))
   })
 
   describe('#getPopulatedTicksInWord', () => {
@@ -114,13 +112,13 @@ describe('TickLens', () => {
     beforeEach(async () => {
       const tx = await createPool(tokens[0].address, tokens[1].address)
       await tx.wait()
-      poolAddress = await computePoolAddress(factory, [tokens[0].address, tokens[1].address], FeeAmount.MEDIUM)
+      poolAddress = await computePoolAddress(factory.address, [tokens[0].address, tokens[1].address], FeeAmount.MEDIUM)
     })
 
     beforeEach(async () => {
       // const lensFactory = await ethers.getContractFactory('TickLensTest')
-      // tickLens = (await lensFactory.deploy()) as TickLensTest
-      tickLens = (await getContractInstance("TickLensTest")) as TickLensTest
+      const lensFactory = await getContractFactory('TickLensTest')
+      tickLens = (await lensFactory.deploy()) as TickLensTest
     })
 
     function getTickBitmapIndex(tick: BigNumberish, tickSpacing: number): BigNumber {

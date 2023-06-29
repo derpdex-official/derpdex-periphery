@@ -5,7 +5,7 @@ import { OracleTest, TestERC20 } from '../../typechain'
 import { expandTo18Decimals } from './shared/expandTo18Decimals'
 import snapshotGasCost from './shared/snapshotGasCost'
 
-import getContractInstance from './shared/getContractInstance'
+import { getContractFactory } from './shared/zkUtils'
 
 describe('OracleLibrary', () => {
   // let loadFixture: ReturnType<typeof waffle.createFixtureLoader>
@@ -16,20 +16,18 @@ describe('OracleLibrary', () => {
 
   const oracleTestFixture = async () => {
     // const tokenFactory = await ethers.getContractFactory('TestERC20')
+    const tokenFactory = await getContractFactory('TestERC20')
     const tokens: [TestERC20, TestERC20, TestERC20] = [
-      // (await tokenFactory.deploy(constants.MaxUint256.div(2))) as TestERC20, // do not use maxu256 to avoid overflowing
-      // (await tokenFactory.deploy(constants.MaxUint256.div(2))) as TestERC20,
-      // (await tokenFactory.deploy(constants.MaxUint256.div(2))) as TestERC20,
-      (await getContractInstance("TestERC20", [constants.MaxUint256.div(2)])) as TestERC20,
-      (await getContractInstance("TestERC20", [constants.MaxUint256.div(2)])) as TestERC20,
-      (await getContractInstance("TestERC20", [constants.MaxUint256.div(2)])) as TestERC20
+      (await tokenFactory.deploy(constants.MaxUint256.div(2))) as TestERC20, // do not use maxu256 to avoid overflowing
+      (await tokenFactory.deploy(constants.MaxUint256.div(2))) as TestERC20,
+      (await tokenFactory.deploy(constants.MaxUint256.div(2))) as TestERC20,
     ]
 
     tokens.sort((a, b) => (a.address.toLowerCase() < b.address.toLowerCase() ? -1 : 1))
 
     // const oracleFactory = await ethers.getContractFactory('OracleTest')
-    // const oracle = await oracleFactory.deploy()
-    const oracle = await getContractInstance("OracleTest")
+    const oracleFactory = await getContractFactory('OracleTest')
+    const oracle = await oracleFactory.deploy()
 
     return {
       tokens: tokens as TestERC20[],
@@ -49,11 +47,12 @@ describe('OracleLibrary', () => {
   })
 
   describe('#consult', () => {
-    // let mockObservableFactory: ContractFactory
+    let mockObservableFactory: ContractFactory
 
-    // before('create mockObservableFactory', async () => {
-    //   mockObservableFactory = await ethers.getContractFactory('MockObservable')
-    // })
+    before('create mockObservableFactory', async () => {
+      // mockObservableFactory = await ethers.getContractFactory('MockObservable')
+      mockObservableFactory = await getContractFactory('MockObservable')
+    })
 
     it('reverts when period is 0', async () => {
       await expect(oracle.consult(oracle.address, 0)).to.be.revertedWith('BP')
@@ -125,16 +124,11 @@ describe('OracleLibrary', () => {
       tickCumulatives: [BigNumberish, BigNumberish]
       secondsPerLiqCumulatives: [BigNumberish, BigNumberish]
     }) {
-      // return mockObservableFactory.deploy(
-      //   [period, 0],
-      //   tickCumulatives.map(BigNumber.from),
-      //   secondsPerLiqCumulatives.map(BigNumber.from)
-      // )
-      return await getContractInstance("MockObservable", [
+      return mockObservableFactory.deploy(
         [period, 0],
         tickCumulatives.map(BigNumber.from),
         secondsPerLiqCumulatives.map(BigNumber.from)
-      ])
+      )
     }
   })
 
@@ -210,7 +204,7 @@ describe('OracleLibrary', () => {
   })
 
   describe('#getOldestObservationSecondsAgo', () => {
-    // let mockObservationsFactory: ContractFactory
+    let mockObservationsFactory: ContractFactory
 
     // some empty tick values as this function does not use them
     const emptySPL = [0, 0, 0, 0]
@@ -225,18 +219,7 @@ describe('OracleLibrary', () => {
       observationCardinality: number,
       observationIndex: number
     ) => {
-      // const mockObservations = await mockObservationsFactory.deploy(
-      //   blockTimestamps,
-      //   emptyTickCumulatives,
-      //   emptySPL,
-      //   initializeds,
-      //   emptyTick,
-      //   observationCardinality,
-      //   observationIndex,
-      //   false,
-      //   emptyLiquidity
-      // )
-      const mockObservations = await getContractInstance("MockObservations", [
+      const mockObservations = await mockObservationsFactory.deploy(
         blockTimestamps,
         emptyTickCumulatives,
         emptySPL,
@@ -246,7 +229,7 @@ describe('OracleLibrary', () => {
         observationIndex,
         false,
         emptyLiquidity
-      ])
+      )
 
       var result = await oracle.getOldestObservationSecondsAgo(mockObservations.address)
 
@@ -265,9 +248,10 @@ describe('OracleLibrary', () => {
       expect(result['secondsAgo']).to.equal(secondsAgo)
     }
 
-    // before('create mockObservationsFactory', async () => {
-    //   mockObservationsFactory = await ethers.getContractFactory('MockObservations')
-    // })
+    before('create mockObservationsFactory', async () => {
+      // mockObservationsFactory = await ethers.getContractFactory('MockObservations')
+      mockObservationsFactory = await getContractFactory('MockObservations')
+    })
 
     it('fetches the oldest timestamp from the slot after observationIndex', async () => {
       // set up test case
@@ -307,18 +291,7 @@ describe('OracleLibrary', () => {
       const initializeds = [false, false, false, false]
       const observationCardinality = 0
       const observationIndex = 0
-      // const mockObservations = await mockObservationsFactory.deploy(
-      //   blockTimestamps,
-      //   emptyTickCumulatives,
-      //   emptySPL,
-      //   initializeds,
-      //   emptyTick,
-      //   observationCardinality,
-      //   observationIndex,
-      //   false,
-      //   emptyLiquidity
-      // )
-      const mockObservations = await getContractInstance("MockObservations", [
+      const mockObservations = await mockObservationsFactory.deploy(
         blockTimestamps,
         emptyTickCumulatives,
         emptySPL,
@@ -328,7 +301,7 @@ describe('OracleLibrary', () => {
         observationIndex,
         false,
         emptyLiquidity
-      ])
+      )
 
       await expect(oracle.getOldestObservationSecondsAgo(mockObservations.address)).to.be.revertedWith('NI')
     })
@@ -347,7 +320,7 @@ describe('OracleLibrary', () => {
   })
 
   describe('#getBlockStartingTickAndLiquidity', () => {
-    // let mockObservationsFactory: ContractFactory
+    let mockObservationsFactory: ContractFactory
     let mockObservations: Contract
     let blockTimestamps: number[]
     let tickCumulatives: number[]
@@ -359,23 +332,13 @@ describe('OracleLibrary', () => {
     let lastObservationCurrentTimestamp: boolean
     let liquidity: number
 
-    // before('create mockObservationsFactory', async () => {
-    //   mockObservationsFactory = await ethers.getContractFactory('MockObservations')
-    // })
+    before('create mockObservationsFactory', async () => {
+      // mockObservationsFactory = await ethers.getContractFactory('MockObservations')
+      mockObservationsFactory = await getContractFactory('MockObservations')
+    })
 
     const deployMockObservationsContract = async () => {
-      // mockObservations = await mockObservationsFactory.deploy(
-      //   blockTimestamps,
-      //   tickCumulatives,
-      //   liquidityValues,
-      //   initializeds,
-      //   slot0Tick,
-      //   observationCardinality,
-      //   observationIndex,
-      //   lastObservationCurrentTimestamp,
-      //   liquidity
-      // )
-      mockObservations = await getContractInstance("MockObservations", [
+      mockObservations = await mockObservationsFactory.deploy(
         blockTimestamps,
         tickCumulatives,
         liquidityValues,
@@ -385,7 +348,7 @@ describe('OracleLibrary', () => {
         observationIndex,
         lastObservationCurrentTimestamp,
         liquidity
-      ])
+      )
     }
 
     it('reverts if the pool is not initialized', async () => {

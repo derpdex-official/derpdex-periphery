@@ -5,7 +5,7 @@ import { encodePriceSqrt } from './shared/encodePriceSqrt'
 import { expect } from './shared/expect'
 import { TestERC20Metadata, NFTDescriptorTest } from '../../typechain'
 // import { Fixture } from 'ethereum-waffle'
-import { FeeAmount, PRIVATE_KEY, TICK_SPACINGS } from './shared/constants'
+import { FeeAmount, TICK_SPACINGS } from './shared/constants'
 import snapshotGasCost from './shared/snapshotGasCost'
 import { formatSqrtRatioX96 } from './shared/formatSqrtRatioX96'
 import { getMaxTick, getMinTick } from './shared/ticks'
@@ -14,8 +14,10 @@ import { extractJSONFromURI } from './shared/extractJSONFromURI'
 import fs from 'fs'
 import isSvg from 'is-svg'
 
-import getContractInstance from './shared/getContractInstance'
+import { getContractFactory, getSigners } from './shared/zkUtils'
 import { Provider, Wallet } from 'zksync-web3'
+type Fixture<T> = (wallets: Wallet[], provider: Provider) => Promise<T>
+const provider = Provider.getDefaultProvider()
 
 const TEN = BigNumber.from(10)
 const LOWEST_SQRT_RATIO = 4310618292
@@ -24,31 +26,27 @@ const HIGHEST_SQRT_RATIO = BigNumber.from(33849).mul(TEN.pow(34))
 describe('NFTDescriptor', () => {
   let wallets: Wallet[]
 
-  // const nftDescriptorFixture: Fixture<{
-  //   tokens: [TestERC20Metadata, TestERC20Metadata, TestERC20Metadata, TestERC20Metadata]
-  //   nftDescriptor: NFTDescriptorTest
-  // }> = async (wallets, provider) => {
-  const nftDescriptorFixture = async (wallets: Wallet[], provider: Provider) => {
+  const nftDescriptorFixture: Fixture<{
+    tokens: [TestERC20Metadata, TestERC20Metadata, TestERC20Metadata, TestERC20Metadata]
+    nftDescriptor: NFTDescriptorTest
+  }> = async (wallets, provider) => {
     // const nftDescriptorLibraryFactory = await ethers.getContractFactory('NFTDescriptor')
     // const nftDescriptorLibrary = await nftDescriptorLibraryFactory.deploy()
 
     // const tokenFactory = await ethers.getContractFactory('TestERC20Metadata')
+    const tokenFactory = await getContractFactory('TestERC20Metadata')
     // const NFTDescriptorFactory = await ethers.getContractFactory('NFTDescriptorTest', {
     //   libraries: {
     //     NFTDescriptor: nftDescriptorLibrary.address,
     //   },
     // })
-    // const nftDescriptor = (await NFTDescriptorFactory.deploy()) as NFTDescriptorTest
-    const nftDescriptor = (await getContractInstance("NFTDescriptorTest")) as NFTDescriptorTest
+    const NFTDescriptorFactory = await getContractFactory('NFTDescriptorTest')
+    const nftDescriptor = (await NFTDescriptorFactory.deploy()) as NFTDescriptorTest
     const tokens: [TestERC20Metadata, TestERC20Metadata, TestERC20Metadata, TestERC20Metadata] = [
-      // (await tokenFactory.deploy(constants.MaxUint256.div(2), 'Test ERC20', 'TEST1')) as TestERC20Metadata, // do not use maxu256 to avoid overflowing
-      // (await tokenFactory.deploy(constants.MaxUint256.div(2), 'Test ERC20', 'TEST2')) as TestERC20Metadata,
-      // (await tokenFactory.deploy(constants.MaxUint256.div(2), 'Test ERC20', 'TEST3')) as TestERC20Metadata,
-      // (await tokenFactory.deploy(constants.MaxUint256.div(2), 'Test ERC20', 'TEST4')) as TestERC20Metadata,
-      (await getContractInstance("TestERC20Metadata", [constants.MaxUint256.div(2), 'Test ERC20', 'TEST1'])) as TestERC20Metadata,
-      (await getContractInstance("TestERC20Metadata", [constants.MaxUint256.div(2), 'Test ERC20', 'TEST2'])) as TestERC20Metadata,
-      (await getContractInstance("TestERC20Metadata", [constants.MaxUint256.div(2), 'Test ERC20', 'TEST3'])) as TestERC20Metadata,
-      (await getContractInstance("TestERC20Metadata", [constants.MaxUint256.div(2), 'Test ERC20', 'TEST4'])) as TestERC20Metadata,
+      (await tokenFactory.deploy(constants.MaxUint256.div(2), 'Test ERC20', 'TEST1')) as TestERC20Metadata, // do not use maxu256 to avoid overflowing
+      (await tokenFactory.deploy(constants.MaxUint256.div(2), 'Test ERC20', 'TEST2')) as TestERC20Metadata,
+      (await tokenFactory.deploy(constants.MaxUint256.div(2), 'Test ERC20', 'TEST3')) as TestERC20Metadata,
+      (await tokenFactory.deploy(constants.MaxUint256.div(2), 'Test ERC20', 'TEST4')) as TestERC20Metadata,
     ]
     tokens.sort((a, b) => (a.address.toLowerCase() < b.address.toLowerCase() ? -1 : 1))
     return {
@@ -64,14 +62,14 @@ describe('NFTDescriptor', () => {
 
   before('create fixture loader', async () => {
     // wallets = await (ethers as any).getSigners()
-    wallets = [new Wallet(PRIVATE_KEY, Provider.getDefaultProvider())]
+    wallets = await getSigners()
 
     // loadFixture = waffle.createFixtureLoader(wallets)
   })
 
   beforeEach('load fixture', async () => {
     // ;({ nftDescriptor, tokens } = await loadFixture(nftDescriptorFixture))
-    ;({ nftDescriptor, tokens } = await nftDescriptorFixture(wallets, Provider.getDefaultProvider()))
+    ;({ nftDescriptor, tokens } = await nftDescriptorFixture(wallets, provider))
   })
 
   describe('#constructTokenURI', () => {
@@ -316,26 +314,30 @@ describe('NFTDescriptor', () => {
       })
     })
 
-    it('gas', async () => {
-      await snapshotGasCost(
-        nftDescriptor.getGasCostOfConstructTokenURI({
-          tokenId,
-          baseTokenAddress,
-          quoteTokenAddress,
-          baseTokenSymbol,
-          quoteTokenSymbol,
-          baseTokenDecimals,
-          quoteTokenDecimals,
-          flipRatio,
-          tickLower,
-          tickUpper,
-          tickCurrent,
-          tickSpacing,
-          fee,
-          poolAddress,
-        })
-      )
-    })
+    // due to the limitation of libraries embed into contract deployment,
+    // libraries here embedded into contract and make nftDescriptor contract oversize
+    // hence comment out getGasCostOfConstructTokenURI function in nftDescriptor
+    // to make other function works
+    // it('gas', async () => {
+    //   await snapshotGasCost(
+    //     nftDescriptor.getGasCostOfConstructTokenURI({
+    //       tokenId,
+    //       baseTokenAddress,
+    //       quoteTokenAddress,
+    //       baseTokenSymbol,
+    //       quoteTokenSymbol,
+    //       baseTokenDecimals,
+    //       quoteTokenDecimals,
+    //       flipRatio,
+    //       tickLower,
+    //       tickUpper,
+    //       tickCurrent,
+    //       tickSpacing,
+    //       fee,
+    //       poolAddress,
+    //     })
+    //   )
+    // })
 
     it('snapshot matches', async () => {
       // get snapshot with super rare special sparkle

@@ -4,6 +4,8 @@ import { FeeAmount, TICK_SPACINGS } from './constants'
 import { encodePriceSqrt } from './encodePriceSqrt'
 import { getMaxTick, getMinTick } from './ticks'
 
+let tx
+
 export async function createPool(
   nft: MockTimeNonfungiblePositionManager,
   wallet: Wallet,
@@ -13,7 +15,7 @@ export async function createPool(
   if (tokenAddressA.toLowerCase() > tokenAddressB.toLowerCase())
     [tokenAddressA, tokenAddressB] = [tokenAddressB, tokenAddressA]
 
-  const tx = await nft.createAndInitializePoolIfNecessary(tokenAddressA, tokenAddressB, FeeAmount.MEDIUM, encodePriceSqrt(1, 1))
+  tx = await nft.createAndInitializePoolIfNecessary(tokenAddressA, tokenAddressB, FeeAmount.MEDIUM, encodePriceSqrt(1, 1))
   await tx.wait()
 
   const liquidityParams = {
@@ -39,7 +41,6 @@ export async function createPoolWithMultiplePositions(
   tokenAddressA: string,
   tokenAddressB: string
 ) {
-  let tx
   if (tokenAddressA.toLowerCase() > tokenAddressB.toLowerCase())
     [tokenAddressA, tokenAddressB] = [tokenAddressB, tokenAddressA]
 
@@ -106,7 +107,8 @@ export async function createPoolWithZeroTickInitialized(
   if (tokenAddressA.toLowerCase() > tokenAddressB.toLowerCase())
     [tokenAddressA, tokenAddressB] = [tokenAddressB, tokenAddressA]
 
-  await nft.createAndInitializePoolIfNecessary(tokenAddressA, tokenAddressB, FeeAmount.MEDIUM, encodePriceSqrt(1, 1))
+  tx = await nft.createAndInitializePoolIfNecessary(tokenAddressA, tokenAddressB, FeeAmount.MEDIUM, encodePriceSqrt(1, 1))
+  await tx.wait()
 
   const liquidityParams = {
     token0: tokenAddressA,
@@ -122,7 +124,8 @@ export async function createPoolWithZeroTickInitialized(
     deadline: 1,
   }
 
-  await nft.mint(liquidityParams)
+  tx = await nft.mint(liquidityParams)
+  await tx.wait()
 
   const liquidityParams2 = {
     token0: tokenAddressA,
@@ -138,7 +141,8 @@ export async function createPoolWithZeroTickInitialized(
     deadline: 1,
   }
 
-  await nft.mint(liquidityParams2)
+  tx = await nft.mint(liquidityParams2)
+  await tx.wait()
 
   const liquidityParams3 = {
     token0: tokenAddressA,

@@ -1,4 +1,4 @@
-import { Contract } from 'ethers'
+// import { Contract } from 'ethers'
 // import { waffle, ethers } from 'hardhat'
 
 // import { Fixture } from 'ethereum-waffle'
@@ -6,22 +6,21 @@ import { PeripheryImmutableStateTest, IWETH9 } from '../../typechain'
 import { expect } from './shared/expect'
 import { v3RouterFixture } from './shared/externalFixtures'
 
-import { Provider, Wallet } from 'zksync-web3'
-import { PRIVATE_KEY } from './shared/constants'
-import getContractInstance from './shared/getContractInstance'
+import { Provider, Wallet, Contract } from 'zksync-web3'
+import { getContractFactory, getSigners } from './shared/zkUtils'
+type Fixture<T> = (wallets: Wallet[], provider: Provider) => Promise<T>
 
 describe('PeripheryImmutableState', () => {
-  // const nonfungiblePositionManagerFixture: Fixture<{
-  //   weth9: IWETH9
-  //   factory: Contract
-  //   state: PeripheryImmutableStateTest
-  // }> = async (wallets, provider) => {
-  const nonfungiblePositionManagerFixture = async (wallets: Wallet[], provider: Provider) => {
+  const nonfungiblePositionManagerFixture: Fixture<{
+    weth9: IWETH9
+    factory: Contract
+    state: PeripheryImmutableStateTest
+  }> = async (wallets, provider) => {
     const { weth9, factory } = await v3RouterFixture(wallets, provider)
 
     // const stateFactory = await ethers.getContractFactory('PeripheryImmutableStateTest')
-    // const state = (await stateFactory.deploy(factory.address, weth9.address)) as PeripheryImmutableStateTest
-    const state = (await getContractInstance("PeripheryImmutableStateTest", [factory.address, weth9.address])) as PeripheryImmutableStateTest
+    const stateFactory = await getContractFactory('PeripheryImmutableStateTest')
+    const state = (await stateFactory.deploy(factory.address, weth9.address)) as PeripheryImmutableStateTest
 
     return {
       weth9,
@@ -43,8 +42,8 @@ describe('PeripheryImmutableState', () => {
   beforeEach('load fixture', async () => {
     // ;({ state, weth9, factory } = await loadFixture(nonfungiblePositionManagerFixture))
     const provider = Provider.getDefaultProvider()
-    const wallet = new Wallet(PRIVATE_KEY, provider)
-    ;({ state, weth9, factory } = await  nonfungiblePositionManagerFixture([wallet], provider))
+    const wallets = await getSigners()
+    ;({ state, weth9, factory } = await nonfungiblePositionManagerFixture(wallets, provider))
   })
 
   it('bytecode size', async () => {

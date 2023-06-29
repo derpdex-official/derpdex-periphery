@@ -5,15 +5,15 @@ import { expect } from './shared/expect'
 
 import snapshotGasCost from './shared/snapshotGasCost'
 
-import getContractInstance from './shared/getContractInstance'
+import { getContractFactory } from './shared/zkUtils'
 
 describe('LiquidityAmounts', async () => {
   let liquidityFromAmounts: LiquidityAmountsTest
 
   before('deploy test library', async () => {
     // const liquidityFromAmountsTestFactory = await ethers.getContractFactory('LiquidityAmountsTest')
-    // liquidityFromAmounts = (await liquidityFromAmountsTestFactory.deploy()) as LiquidityAmountsTest
-    liquidityFromAmounts = await getContractInstance("LiquidityAmountsTest") as LiquidityAmountsTest
+    const liquidityFromAmountsTestFactory = await getContractFactory('LiquidityAmountsTest')
+    liquidityFromAmounts = (await liquidityFromAmountsTestFactory.deploy()) as LiquidityAmountsTest
   })
 
   describe('#getLiquidityForAmount0', () => {

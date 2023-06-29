@@ -1,4 +1,4 @@
-import { Fixture } from 'ethereum-waffle'
+// import { Fixture } from 'ethereum-waffle'
 // import { constants, Wallet } from 'ethers'
 import { constants, utils } from 'ethers'
 import { ethers, waffle } from 'hardhat'
@@ -12,18 +12,19 @@ import { encodePath } from './shared/path'
 import { createPool } from './shared/quoter'
 
 import { Provider, Wallet } from 'zksync-web3'
-import getContractInstance from './shared/getContractInstance'
+import { getContractFactory, getSigners } from './shared/zkUtils'
+const provider = Provider.getDefaultProvider()
+type Fixture<T> = (wallets: Wallet[], provider: Provider) => Promise<T>
 
 describe('Quoter', () => {
   let wallet: Wallet
   let trader: Wallet
 
-  // const swapRouterFixture: Fixture<{
-  //   nft: MockTimeNonfungiblePositionManager
-  //   tokens: [TestERC20, TestERC20, TestERC20]
-  //   quoter: Quoter
-  // }> = async (wallets, provider) => {
-  const swapRouterFixture = async (wallets: Wallet[], provider: Provider) => {
+  const swapRouterFixture: Fixture<{
+    nft: MockTimeNonfungiblePositionManager
+    tokens: [TestERC20, TestERC20, TestERC20]
+    quoter: Quoter
+  }> = async (wallets, provider) => {
     const { weth9, factory, router, tokens, nft } = await completeFixture(wallets, provider)
 
     // approve & fund wallets
@@ -40,8 +41,8 @@ describe('Quoter', () => {
     }
 
     // const quoterFactory = await ethers.getContractFactory('Quoter')
-    // quoter = (await quoterFactory.deploy(factory.address, weth9.address)) as Quoter
-    quoter = (await getContractInstance("Quoter", [factory.address, weth9.address])) as Quoter
+    const quoterFactory = await getContractFactory('Quoter')
+    quoter = (await quoterFactory.deploy(factory.address, weth9.address)) as Quoter
 
     return {
       tokens,
@@ -58,19 +59,15 @@ describe('Quoter', () => {
 
   before('create fixture loader', async () => {
     // const wallets = await (ethers as any).getSigners()
-    // ;[wallet, trader] = wallets
-    const provider = Provider.getDefaultProvider()
-    wallet = new Wallet(PRIVATE_KEY, provider)
-    trader = Wallet.createRandom().connect(provider)
-    const tx = await wallet.transfer({ to: trader.address, amount: utils.parseEther("1") })
-    await tx.wait()
+    const wallets = await getSigners()
+    ;[wallet, trader] = wallets
     // loadFixture = waffle.createFixtureLoader(wallets)
   })
 
   // helper for getting weth and token balances
   beforeEach('load fixture', async () => {
     // ;({ tokens, nft, quoter } = await loadFixture(swapRouterFixture))
-    ;({ tokens, nft, quoter } = await swapRouterFixture([wallet], Provider.getDefaultProvider()))
+    ;({ tokens, nft, quoter } = await swapRouterFixture([wallet], provider))
   })
 
   describe('quotes', () => {

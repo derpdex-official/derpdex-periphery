@@ -3,7 +3,6 @@ import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/i
 // import { BigNumberish, constants, Wallet } from 'ethers'
 import { BigNumberish, constants, utils } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { Provider, Wallet } from 'zksync-web3'
 import {
   IUniswapV3Factory,
   IWETH9,
@@ -20,7 +19,6 @@ import { encodePriceSqrt } from './shared/encodePriceSqrt'
 import { expandTo18Decimals } from './shared/expandTo18Decimals'
 import { expect } from './shared/expect'
 import { extractJSONFromURI } from './shared/extractJSONFromURI'
-import getContractInstance from './shared/getContractInstance'
 import getPermitNFTSignature from './shared/getPermitNFTSignature'
 import { encodePath } from './shared/path'
 import poolAtAddress from './shared/poolAtAddress'
@@ -28,18 +26,23 @@ import snapshotGasCost from './shared/snapshotGasCost'
 import { getMaxTick, getMinTick } from './shared/ticks'
 import { sortedTokens } from './shared/tokenSort'
 
+import { getContractFactory, getSigners } from './shared/zkUtils'
+import { Provider, Wallet } from 'zksync-web3'
+type Fixture<T> = (wallets: Wallet[], provider: Provider) => Promise<T>
+const provider = Provider.getDefaultProvider()
+let tx
+
 describe('NonfungiblePositionManager', () => {
   let wallets: Wallet[]
   let wallet: Wallet, other: Wallet
 
-  // const nftFixture: Fixture<{
-  //   nft: MockTimeNonfungiblePositionManager
-  //   factory: IUniswapV3Factory
-  //   tokens: [TestERC20, TestERC20, TestERC20]
-  //   weth9: IWETH9
-  //   router: SwapRouter
-  // }> = async (wallets, provider) => {
-    const nftFixture = async (wallets: Wallet[], provider: Provider) => {
+  const nftFixture: Fixture<{
+    nft: MockTimeNonfungiblePositionManager
+    factory: IUniswapV3Factory
+    tokens: [TestERC20, TestERC20, TestERC20]
+    weth9: IWETH9
+    router: SwapRouter
+  }> = async (wallets, provider) => {
     const { weth9, factory, tokens, nft, router } = await completeFixture(wallets, provider)
 
     // approve & fund wallets
@@ -72,25 +75,16 @@ describe('NonfungiblePositionManager', () => {
 
   before('create fixture loader', async () => {
     // wallets = await (ethers as any).getSigners()
-    // ;[wallet, other] = wallets
-    const provider = Provider.getDefaultProvider()
-    wallet = new Wallet(PRIVATE_KEY, provider)
-    other = Wallet.createRandom().connect(provider)
-    const tx = await wallet.transfer({ to: other.address, amount: utils.parseEther("1") })
-    await tx.wait()
-    wallets = [wallet, other]
+    wallets = await getSigners()
+    ;[wallet, other] = wallets
 
     // loadFixture = waffle.createFixtureLoader(wallets)
   })
 
   beforeEach('load fixture', async () => {
+    // loadFixture use evm_snapshot which does not support by hardhat-zksync
     // ;({ nft, factory, tokens, weth9, router } = await loadFixture(nftFixture))
-    const fixture = await nftFixture(wallets, Provider.getDefaultProvider())
-    factory = fixture.factory
-    nft = fixture.nft
-    tokens = fixture.tokens
-    weth9 = fixture.weth9
-    router = fixture.router
+    ;({ nft, factory, tokens, weth9, router } = await nftFixture(wallets, provider))
   })
 
   it('bytecode size', async () => {
@@ -100,19 +94,19 @@ describe('NonfungiblePositionManager', () => {
   describe('#createAndInitializePoolIfNecessary', () => {
     it('creates the pool at the expected address', async () => {
       const expectedAddress = await computePoolAddress(
-        factory,
+        factory.address,
         [tokens[0].address, tokens[1].address],
         FeeAmount.MEDIUM
         )
-      // get deterministic address work differently in zkevm
-      // const code = await wallet.provider.getCode(expectedAddress)
-      // expect(code).to.eq('0x')
-      await nft.createAndInitializePoolIfNecessary(
+      const code = await wallet.provider.getCode(expectedAddress)
+      expect(code).to.eq('0x')
+      tx = await nft.createAndInitializePoolIfNecessary(
         tokens[0].address,
         tokens[1].address,
         FeeAmount.MEDIUM,
         encodePriceSqrt(1, 1)
       )
+      await tx.wait()
       const codeAfter = await wallet.provider.getCode(expectedAddress)
       expect(codeAfter).to.not.eq('0x')
     })
@@ -129,39 +123,44 @@ describe('NonfungiblePositionManager', () => {
 
     it('works if pool is created but not initialized', async () => {
       const expectedAddress = await computePoolAddress(
-        factory,
+        factory.address,
         [tokens[0].address, tokens[1].address],
         FeeAmount.MEDIUM
       )
-      await factory.createPool(tokens[0].address, tokens[1].address, FeeAmount.MEDIUM)
+      tx = await factory.createPool(tokens[0].address, tokens[1].address, FeeAmount.MEDIUM)
+      await tx.wait()
       const code = await wallet.provider.getCode(expectedAddress)
       expect(code).to.not.eq('0x')
-      await nft.createAndInitializePoolIfNecessary(
+      tx = await nft.createAndInitializePoolIfNecessary(
         tokens[0].address,
         tokens[1].address,
         FeeAmount.MEDIUM,
         encodePriceSqrt(2, 1)
       )
+      await tx.wait()
     })
 
     it('works if pool is created and initialized', async () => {
       const expectedAddress = await computePoolAddress(
-        factory,
+        factory.address,
         [tokens[0].address, tokens[1].address],
         FeeAmount.MEDIUM
       )
-      await factory.createPool(tokens[0].address, tokens[1].address, FeeAmount.MEDIUM)
+      tx = await factory.createPool(tokens[0].address, tokens[1].address, FeeAmount.MEDIUM)
+      await tx.wait()
       const pool = new ethers.Contract(expectedAddress, IUniswapV3PoolABI, wallet)
 
-      await pool.initialize(encodePriceSqrt(3, 1))
+      tx = await pool.initialize(encodePriceSqrt(3, 1))
+      await tx.wait()
       const code = await wallet.provider.getCode(expectedAddress)
       expect(code).to.not.eq('0x')
-      await nft.createAndInitializePoolIfNecessary(
+      tx = await nft.createAndInitializePoolIfNecessary(
         tokens[0].address,
         tokens[1].address,
         FeeAmount.MEDIUM,
         encodePriceSqrt(4, 1)
       )
+      await tx.wait()
     })
 
     it('could theoretically use eth via multicall', async () => {
@@ -798,7 +797,7 @@ describe('NonfungiblePositionManager', () => {
     it('transfers tokens owed from burn', async () => {
       const tx = await nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 })
       await tx.wait()
-      const poolAddress = await computePoolAddress(factory, [tokens[0].address, tokens[1].address], FeeAmount.MEDIUM)
+      const poolAddress = await computePoolAddress(factory.address, [tokens[0].address, tokens[1].address], FeeAmount.MEDIUM)
       await expect(
         nft.connect(other).collect({
           tokenId,
@@ -1068,10 +1067,10 @@ describe('NonfungiblePositionManager', () => {
 
       beforeEach('deploy test owner and create a position', async () => {
         let tx
-        // testPositionNFTOwner = (await (
-        //   await ethers.getContractFactory('TestPositionNFTOwner')
-        // ).deploy()) as TestPositionNFTOwner
-        testPositionNFTOwner = await getContractInstance("TestPositionNFTOwner") as TestPositionNFTOwner
+        testPositionNFTOwner = (await (
+          // await ethers.getContractFactory('TestPositionNFTOwner')
+          await getContractFactory('TestPositionNFTOwner')
+        ).deploy()) as TestPositionNFTOwner
 
         tx = await nft.createAndInitializePoolIfNecessary(
           tokens[0].address,
@@ -1200,7 +1199,7 @@ describe('NonfungiblePositionManager', () => {
 
     it('executes all the actions', async () => {
       const pool = poolAtAddress(
-        await computePoolAddress(factory, [tokens[0].address, tokens[1].address], FeeAmount.MEDIUM),
+        await computePoolAddress(factory.address, [tokens[0].address, tokens[1].address], FeeAmount.MEDIUM),
         wallet
       )
       await expect(
@@ -1333,78 +1332,44 @@ describe('NonfungiblePositionManager', () => {
         await tx.wait()
       })
 
-      // it('expected amounts', async () => {
-      //   const { amount0: nft1Amount0, amount1: nft1Amount1 } = await nft.callStatic.collect({
-      //     tokenId: 1,
-      //     recipient: wallet.address,
-      //     amount0Max: MaxUint128,
-      //     amount1Max: MaxUint128,
-      //   })
-      //   const { amount0: nft2Amount0, amount1: nft2Amount1 } = await nft.callStatic.collect({
-      //     tokenId: 2,
-      //     recipient: wallet.address,
-      //     amount0Max: MaxUint128,
-      //     amount1Max: MaxUint128,
-      //   })
-      //   expect(nft1Amount0).to.eq(2501)
-      //   expect(nft1Amount1).to.eq(0)
-      //   expect(nft2Amount0).to.eq(7503)
-      //   expect(nft2Amount1).to.eq(0)
-      // })
+      it('expected amounts', async () => {
+        const { amount0: nft1Amount0, amount1: nft1Amount1 } = await nft.callStatic.collect({
+          tokenId: 1,
+          recipient: wallet.address,
+          amount0Max: MaxUint128,
+          amount1Max: MaxUint128,
+        })
+        const { amount0: nft2Amount0, amount1: nft2Amount1 } = await nft.callStatic.collect({
+          tokenId: 2,
+          recipient: wallet.address,
+          amount0Max: MaxUint128,
+          amount1Max: MaxUint128,
+        })
+        expect(nft1Amount0).to.eq(2501)
+        expect(nft1Amount1).to.eq(0)
+        expect(nft2Amount0).to.eq(7503)
+        expect(nft2Amount1).to.eq(0)
+      })
 
       it('actually collected', async () => {
         const poolAddress = await computePoolAddress(
-          factory,
+          factory.address,
           [tokens[0].address, tokens[1].address],
           FeeAmount.MEDIUM
         )
 
-        // const tx = await nft.collect({
-        //   tokenId: 1,
-        //   recipient: wallet.address,
-        //   amount0Max: MaxUint128,
-        //   amount1Max: MaxUint128,
-        // })
-        // const receipt = await tx.wait()
-        // console.log(receipt.logs)
-
-        // console.log("wallet:", wallet.address)
-        // console.log("token0:", tokens[0].address)
-        // console.log("token1:", tokens[1].address)
-        // console.log("")
-
-        // for (let i = 0; i < receipt.logs.length; i++) {
-        //   const log = receipt.logs[i]
-        //   const topics = log.topics
-        //   if (topics[0] == tokens[1].interface.getEventTopic(tokens[1].interface.events['Transfer(address,address,uint256)'])) {
-        //     console.log("token:", log.address)
-        //     console.log("from:", utils.hexDataSlice(topics[1], 12))
-        //     console.log("to:", utils.hexDataSlice(topics[2], 12))
-        //     console.log("amount:", parseInt(log.data))
-        //   }
-        // }
-
-        // wallet: 0x36615Cf349d7F6344891B1e7CA7C72883F5dc049
-        // token0: 0x1Da4fa70E0f7C497d07900e3C51fdcA00F96327D
-        // token1: 0x269Be318d82CF3b1F0daF3dB6492046217157F60
+        const tx = await nft.collect({
+          tokenId: 1,
+          recipient: wallet.address,
+          amount0Max: MaxUint128,
+          amount1Max: MaxUint128,
+        })
+        await tx.wait()
         
-        // token: 0x000000000000000000000000000000000000800A
-        // from: 0x36615cf349d7f6344891b1e7ca7c72883f5dc049
-        // to: 0x0000000000000000000000000000000000008001
-        // amount: 81075500000000
-
-        // token: 0x1Da4fa70E0f7C497d07900e3C51fdcA00F96327D
-        // from: 0xb0df2a5a0df314e10ec38ce4fe2c6d108792d40d
-        // to: 0x36615cf349d7f6344891b1e7ca7c72883f5dc049
-        // amount: 2501
-
-        // token: 0x000000000000000000000000000000000000800A
-        // from: 0x0000000000000000000000000000000000008001
-        // to: 0x36615cf349d7f6344891b1e7ca7c72883f5dc049
-        // amount: 32990250000000
-        
-        await expect(
-          nft.collect({
+        // await expect(
+        //   nft.collect({
+        expect(
+          await nft.collect({
             tokenId: 1,
             recipient: wallet.address,
             amount0Max: MaxUint128,
@@ -1413,9 +1378,11 @@ describe('NonfungiblePositionManager', () => {
         )
           .to.emit(tokens[0], 'Transfer')
           .withArgs(poolAddress, wallet.address, 2501)
-          // .to.not.emit(tokens[1], 'Transfer') // check result above no Transfer emit for tokens[1], but test error
-        await expect(
-          nft.collect({
+          .to.not.emit(tokens[1], 'Transfer')
+        // await expect(
+        //   nft.collect({
+        expect(
+          await nft.collect({
             tokenId: 2,
             recipient: wallet.address,
             amount0Max: MaxUint128,
@@ -1424,7 +1391,7 @@ describe('NonfungiblePositionManager', () => {
         )
           .to.emit(tokens[0], 'Transfer')
           .withArgs(poolAddress, wallet.address, 7503)
-        //   .to.not.emit(tokens[1], 'Transfer')
+          .to.not.emit(tokens[1], 'Transfer')
       })
     })
   })
@@ -1433,10 +1400,10 @@ describe('NonfungiblePositionManager', () => {
     it('gas', async () => {
       let tx
       // const positionsGasTestFactory = await ethers.getContractFactory('NonfungiblePositionManagerPositionsGasTest')
-      // const positionsGasTest = (await positionsGasTestFactory.deploy(
-      //   nft.address
-      // )) as NonfungiblePositionManagerPositionsGasTest
-      const positionsGasTest = await getContractInstance("NonfungiblePositionManagerPositionsGasTest", [nft.address])
+      const positionsGasTestFactory = await getContractFactory('NonfungiblePositionManagerPositionsGasTest')
+      const positionsGasTest = (await positionsGasTestFactory.deploy(
+        nft.address
+      )) as NonfungiblePositionManagerPositionsGasTest
 
       tx = await nft.createAndInitializePoolIfNecessary(
         tokens[0].address,

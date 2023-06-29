@@ -8,25 +8,24 @@ import { expect } from 'chai'
 import { getPermitSignature } from './shared/permit'
 
 import { Provider, Wallet } from 'zksync-web3'
-import getContractInstance from './shared/getContractInstance'
-import { PRIVATE_KEY } from './shared/constants'
+import { getContractFactory, getSigners } from './shared/zkUtils'
+type Fixture<T> = (wallets: Wallet[], provider: Provider) => Promise<T>
 
 describe('SelfPermit', () => {
   let wallet: Wallet
   let other: Wallet
 
-  // const fixture: Fixture<{
-  //   token: TestERC20PermitAllowed
-  //   selfPermitTest: SelfPermitTest
-  // }> = async (wallets, provider) => {
-  const fixture = async (wallets: Wallet[], provider: Provider) => {
+  const fixture: Fixture<{
+    token: TestERC20PermitAllowed
+    selfPermitTest: SelfPermitTest
+  }> = async (wallets, provider) => {
     // const tokenFactory = await ethers.getContractFactory('TestERC20PermitAllowed')
-    // const token = (await tokenFactory.deploy(0)) as TestERC20PermitAllowed
-    const token = (await getContractInstance("TestERC20PermitAllowed", [0])) as TestERC20PermitAllowed
+    const tokenFactory = await getContractFactory('TestERC20PermitAllowed')
+    const token = (await tokenFactory.deploy(0)) as TestERC20PermitAllowed
 
     // const selfPermitTestFactory = await ethers.getContractFactory('SelfPermitTest')
-    // const selfPermitTest = (await selfPermitTestFactory.deploy()) as SelfPermitTest
-    const selfPermitTest = (await getContractInstance("SelfPermitTest")) as SelfPermitTest
+    const selfPermitTestFactory = await getContractFactory('SelfPermitTest')
+    const selfPermitTest = (await selfPermitTestFactory.deploy()) as SelfPermitTest
 
     return {
       token,
@@ -41,19 +40,14 @@ describe('SelfPermit', () => {
 
   before('create fixture loader', async () => {
     // const wallets = await (ethers as any).getSigners()
-    // ;[wallet, other] = wallets
+    const wallets = await getSigners()
+    ;[wallet, other] = wallets
     // loadFixture = waffle.createFixtureLoader(wallets)
-    const provider = Provider.getDefaultProvider()
-    wallet = new Wallet(PRIVATE_KEY, provider)
-    other = Wallet.createRandom().connect(provider)
-    const tx = await wallet.transfer({ to: other.address, amount: utils.parseEther("1") })
-    await tx.wait()
   })
 
   beforeEach('load fixture', async () => {
     // ;({ token, selfPermitTest } = await loadFixture(fixture))
-    const provider = Provider.getDefaultProvider()
-    ;({ token, selfPermitTest } = await fixture([wallet], provider))
+    ;({ token, selfPermitTest } = await fixture([wallet], Provider.getDefaultProvider()))
   })
 
   it('#permit', async () => {

@@ -1,5 +1,6 @@
-import { waffle, ethers } from 'hardhat'
-import { constants, BigNumberish, Contract } from 'ethers'
+// import { waffle, ethers } from 'hardhat'
+// import { constants, BigNumberish, Contract } from 'ethers'
+import { constants, BigNumberish } from 'ethers'
 // import { Fixture } from 'ethereum-waffle'
 import {
   PositionValueTest,
@@ -22,25 +23,26 @@ import { expect } from './shared/expect'
 
 import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json'
 
-import { Provider, Wallet } from 'zksync-web3'
-import getContractInstance from './shared/getContractInstance'
+import { Provider, Wallet, Contract } from 'zksync-web3'
+import { getContractFactory } from './shared/zkUtils'
+type Fixture<T> = (wallets: Wallet[], provider: Provider) => Promise<T>
+const provider = Provider.getDefaultProvider()
 
 describe('PositionValue', async () => {
   // const [...wallets] = waffle.provider.getWallets()
-  const provider = Provider.getDefaultProvider()
   const wallets = [new Wallet(PRIVATE_KEY, provider)]
-  // const positionValueCompleteFixture: Fixture<{
-  //   positionValue: PositionValueTest
-  //   tokens: [TestERC20, TestERC20, TestERC20]
-  //   nft: MockTimeNonfungiblePositionManager
-  //   router: SwapRouter
-  //   factory: IUniswapV3Factory
-  // }> = async (wallets, provider) => {
-  const positionValueCompleteFixture = async (wallets: Wallet[], provider: Provider) => {
+
+  const positionValueCompleteFixture: Fixture<{
+    positionValue: PositionValueTest
+    tokens: [TestERC20, TestERC20, TestERC20]
+    nft: MockTimeNonfungiblePositionManager
+    router: SwapRouter
+    factory: IUniswapV3Factory
+  }> = async (wallets, provider) => {
     const { nft, router, tokens, factory } = await completeFixture(wallets, provider)
     // const positionValueFactory = await ethers.getContractFactory('PositionValueTest')
-    // const positionValue = (await positionValueFactory.deploy()) as PositionValueTest
-    const positionValue = (await getContractInstance("PositionValueTest")) as PositionValueTest
+    const positionValueFactory = await getContractFactory('PositionValueTest')
+    const positionValue = (await positionValueFactory.deploy()) as PositionValueTest
 
     for (const token of tokens) {
       let tx
@@ -86,8 +88,8 @@ describe('PositionValue', async () => {
     )
     await tx.wait()
 
-    const poolAddress = await computePoolAddress(factory, [tokens[0].address, tokens[1].address], FeeAmount.MEDIUM)
-    pool = new ethers.Contract(poolAddress, IUniswapV3PoolABI, wallets[0])
+    const poolAddress = await computePoolAddress(factory.address, [tokens[0].address, tokens[1].address], FeeAmount.MEDIUM)
+    pool = new Contract(poolAddress, IUniswapV3PoolABI, wallets[0])
   })
 
   describe('#total', () => {

@@ -13,6 +13,9 @@ import { getMaxTick, getMinTick } from './shared/ticks'
 import { computePoolAddress } from './shared/computePoolAddress'
 
 import { Provider, Wallet } from 'zksync-web3'
+import { getSigners } from './shared/zkUtils'
+type Fixture<T> = (wallets: Wallet[], provider: Provider) => Promise<T>
+const provider = Provider.getDefaultProvider()
 
 describe('SwapRouter', function () {
   // this.timeout(40000)
@@ -20,14 +23,13 @@ describe('SwapRouter', function () {
   let wallet: Wallet
   let trader: Wallet
 
-  // const swapRouterFixture: Fixture<{
-  //   weth9: IWETH9
-  //   factory: Contract
-  //   router: MockTimeSwapRouter
-  //   nft: MockTimeNonfungiblePositionManager
-  //   tokens: [TestERC20, TestERC20, TestERC20]
-  // }> = async (wallets, provider) => {
-  const swapRouterFixture = async (wallets: Wallet[], provider: Provider) => {
+  const swapRouterFixture: Fixture<{
+    weth9: IWETH9
+    factory: IUniswapV3Factory
+    router: MockTimeSwapRouter
+    nft: MockTimeNonfungiblePositionManager
+    tokens: [TestERC20, TestERC20, TestERC20]
+  }> = async (wallets, provider) => {
     const { weth9, factory, router, tokens, nft } = await completeFixture(wallets, provider)
 
     // approve & fund wallets
@@ -70,18 +72,13 @@ describe('SwapRouter', function () {
 
   before('create fixture loader', async () => {
     // ;[wallet, trader] = await (ethers as any).getSigners()
+    ;[wallet, trader] = await getSigners()
     // loadFixture = waffle.createFixtureLoader([wallet, trader])
-    const provider = Provider.getDefaultProvider()
-    wallet = new Wallet(PRIVATE_KEY, provider)
-    trader = Wallet.createRandom().connect(provider)
-    const tx = await wallet.transfer({ to: trader.address, amount: utils.parseEther("1") })
-    await tx.wait()
   })
 
   // helper for getting weth and token balances
   beforeEach('load fixture', async () => {
     // ;({ router, weth9, factory, tokens, nft } = await loadFixture(swapRouterFixture))
-    const provider = Provider.getDefaultProvider()
     ;({ router, weth9, factory, tokens, nft } = await swapRouterFixture([wallet], provider))
 
     getBalances = async (who: string) => {
@@ -105,7 +102,7 @@ describe('SwapRouter', function () {
     const balances = await getBalances(router.address)
     expect(Object.values(balances).every((b) => b.eq(0))).to.be.eq(true)
     // const balance = await waffle.provider.getBalance(router.address)
-    const balance = await Provider.getDefaultProvider().getBalance(router.address)
+    const balance = await provider.getBalance(router.address)
     expect(balance.eq(0)).to.be.eq(true)
   })
 
@@ -282,24 +279,24 @@ describe('SwapRouter', function () {
             .to.emit(tokens[0], 'Transfer')
             .withArgs(
               trader.address,
-              await computePoolAddress(factory, [tokens[0].address, tokens[1].address], FeeAmount.MEDIUM),
+              await computePoolAddress(factory.address, [tokens[0].address, tokens[1].address], FeeAmount.MEDIUM),
               5
             )
             .to.emit(tokens[1], 'Transfer')
             .withArgs(
-              await computePoolAddress(factory, [tokens[0].address, tokens[1].address], FeeAmount.MEDIUM),
+              await computePoolAddress(factory.address, [tokens[0].address, tokens[1].address], FeeAmount.MEDIUM),
               router.address,
               3
             )
             .to.emit(tokens[1], 'Transfer')
             .withArgs(
               router.address,
-              await computePoolAddress(factory, [tokens[1].address, tokens[2].address], FeeAmount.MEDIUM),
+              await computePoolAddress(factory.address, [tokens[1].address, tokens[2].address], FeeAmount.MEDIUM),
               3
             )
             .to.emit(tokens[2], 'Transfer')
             .withArgs(
-              await computePoolAddress(factory, [tokens[1].address, tokens[2].address], FeeAmount.MEDIUM),
+              await computePoolAddress(factory.address, [tokens[1].address, tokens[2].address], FeeAmount.MEDIUM),
               trader.address,
               1
             )
@@ -657,20 +654,20 @@ describe('SwapRouter', function () {
           )
             .to.emit(tokens[2], 'Transfer')
             .withArgs(
-              await computePoolAddress(factory, [tokens[2].address, tokens[1].address], FeeAmount.MEDIUM),
+              await computePoolAddress(factory.address, [tokens[2].address, tokens[1].address], FeeAmount.MEDIUM),
               trader.address,
               1
             )
             .to.emit(tokens[1], 'Transfer')
             .withArgs(
-              await computePoolAddress(factory, [tokens[1].address, tokens[0].address], FeeAmount.MEDIUM),
-              await computePoolAddress(factory, [tokens[2].address, tokens[1].address], FeeAmount.MEDIUM),
+              await computePoolAddress(factory.address, [tokens[1].address, tokens[0].address], FeeAmount.MEDIUM),
+              await computePoolAddress(factory.address, [tokens[2].address, tokens[1].address], FeeAmount.MEDIUM),
               3
             )
             .to.emit(tokens[0], 'Transfer')
             .withArgs(
               trader.address,
-              await computePoolAddress(factory, [tokens[1].address, tokens[0].address], FeeAmount.MEDIUM),
+              await computePoolAddress(factory.address, [tokens[1].address, tokens[0].address], FeeAmount.MEDIUM),
               5
             )
         })
@@ -941,7 +938,6 @@ describe('SwapRouter', function () {
       it('#unwrapWETH9WithFee', async () => {
         let tx
         // const startBalance = await waffle.provider.getBalance(feeRecipient)
-        const provider = Provider.getDefaultProvider()
         const startBalance = await provider.getBalance(feeRecipient)
         tx = await createPoolWETH9(tokens[0].address)
         await tx.wait()

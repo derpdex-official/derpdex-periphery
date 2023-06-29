@@ -22,8 +22,9 @@ import { expect } from './shared/expect'
 import { getMaxTick, getMinTick } from './shared/ticks'
 import { computePoolAddress } from './shared/computePoolAddress'
 
-import getContractInstance from './shared/getContractInstance'
+import { getContractFactory } from './shared/zkUtils'
 import { Provider, Wallet } from 'zksync-web3'
+let tx
 
 describe('PairFlash test', () => {
   // const provider = waffle.provider
@@ -44,7 +45,6 @@ describe('PairFlash test', () => {
     if (tokenAddressA.toLowerCase() > tokenAddressB.toLowerCase())
       [tokenAddressA, tokenAddressB] = [tokenAddressB, tokenAddressA]
 
-    let tx
     tx = await nft.createAndInitializePoolIfNecessary(tokenAddressA, tokenAddressB, fee, price)
     await tx.wait()
 
@@ -72,12 +72,12 @@ describe('PairFlash test', () => {
     const token1 = tokens[1]
 
     // const flashContractFactory = await ethers.getContractFactory('PairFlash')
-    // const flash = (await flashContractFactory.deploy(router.address, factory.address, weth9.address)) as PairFlash
-    const flash = await getContractInstance("PairFlash", [router.address, factory.address, weth9.address]) as PairFlash
+    const flashContractFactory = await getContractFactory('PairFlash')
+    const flash = (await flashContractFactory.deploy(router.address, factory.address, weth9.address)) as PairFlash
 
     // const quoterFactory = await ethers.getContractFactory('Quoter')
-    // const quoter = (await quoterFactory.deploy(factory.address, weth9.address)) as Quoter
-    const quoter = await getContractInstance("Quoter", [factory.address, weth9.address]) as Quoter
+    const quoterFactory = await getContractFactory('Quoter')
+    const quoter = (await quoterFactory.deploy(factory.address, weth9.address)) as Quoter
 
     return {
       token0,
@@ -101,7 +101,6 @@ describe('PairFlash test', () => {
     // ;({ factory, token0, token1, flash, nft, quoter } = await loadFixture(flashFixture))
     ;({ factory, token0, token1, flash, nft, quoter } = await flashFixture())
 
-    let tx
     tx = await token0.approve(nft.address, MaxUint128)
     await tx.wait()
     tx = await token1.approve(nft.address, MaxUint128)
@@ -130,9 +129,9 @@ describe('PairFlash test', () => {
         fee3: FeeAmount.HIGH,
       }
       // pool1 is the borrow pool
-      const pool1 = await computePoolAddress(factory, [token0.address, token1.address], FeeAmount.MEDIUM)
-      const pool2 = await computePoolAddress(factory, [token0.address, token1.address], FeeAmount.LOW)
-      const pool3 = await computePoolAddress(factory, [token0.address, token1.address], FeeAmount.HIGH)
+      const pool1 = await computePoolAddress(factory.address, [token0.address, token1.address], FeeAmount.MEDIUM)
+      const pool2 = await computePoolAddress(factory.address, [token0.address, token1.address], FeeAmount.LOW)
+      const pool3 = await computePoolAddress(factory.address, [token0.address, token1.address], FeeAmount.HIGH)
 
       const expectedAmountOut0 = await quoter.callStatic.quoteExactInputSingle(
         token1.address,

@@ -3,8 +3,9 @@ cache/
 crytic-export/
 node_modules/
 typechain/
-.DS_Store
+
 cache-zk/
 artifacts-zk/
 .env
 __snapshots__/
+.DS_Store

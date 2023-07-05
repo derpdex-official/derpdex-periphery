@@ -11,9 +11,9 @@ export default {
         NFTPositionManagerAddress: "0xf70B4CD44b0750f2eEbb1A943f7a6c27C67E98C3",
     },
     mainnet: {
-        NFTDescriptorLibrary: "0xB1Bc399a026b13f3369Bb38c8d4eE903C2049C99",
-        factoryAddress: "0x770f35757eC4E92D99ae49c1759DEbD97A1ABf6b",
+        NFTDescriptorLibrary: "0x69B41D94DA0a3415dAb6b80d3Bb501BE5bafb03A",
+        factoryAddress: "0x52A1865eb6903BC777A02Ae93159105015CA1517",
         WETH: "0x5aea5775959fbc2557cc8789bc1bf90a239d9a91", //https://era.zksync.io/docs/dev/building-on-zksync/useful-address.html#mainnet-known-tokens
-        NFTPositionManagerAddress: "0xC56b80D89301287d55261655299255Ce26c46CFf",
+        NFTPositionManagerAddress: "0x7F4cB0666B700dF62E7fD0aB30e7C354Aa0A1890",
     }
 }

@@ -21,7 +21,8 @@ contract TestMulticall is Multicall {
     uint256 public paid;
 
     function pays() external payable {
-        paid += msg.value;
+        // paid += msg.value; // msg.value in zksync evm always return 0
+        paid += address(this).balance;
     }
 
     function returnSender() external view returns (address) {
